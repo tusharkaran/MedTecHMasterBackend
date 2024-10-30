@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     "doctors",
     "medadmin",
     "rest_framework",
+    "corsheaders"
 ]
 
 REST_FRAMEWORK = {
@@ -57,7 +58,32 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
 ]
+
+# Allow all origins (not recommended for production)
+CORS_ALLOW_ALL_ORIGINS = True
+
+# OR specify allowed origins (recommended for production)
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",  # Your frontend URL
+    # Add other origins if needed
+]
+
+CORS_ALLOW_CREDENTIALS = True  # Allow cookies to be included in cross-site requests
+CORS_ALLOW_METHODS = [
+    "GET",
+    "POST",
+    "PUT",
+    "PATCH",
+    "DELETE",
+    "OPTIONS"
+]
+CORS_ALLOW_HEADERS = [
+    "content-type",
+    "authorization",
+]
+
 
 ROOT_URLCONF = "mainApi.urls"
 
