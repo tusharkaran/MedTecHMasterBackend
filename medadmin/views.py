@@ -7,6 +7,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth.hashers import check_password
 from django.shortcuts import get_object_or_404
 from .models import Admin
+from .serializer import AdminCreateSerializer
 
 # Create your views here.
 def getMedAdmin(request):
@@ -42,3 +43,12 @@ class AdminLoginView(APIView):
             "access_token": access_token,
             "refresh_token": refresh_token
         }, status=status.HTTP_200_OK)
+
+
+class AdminCreateView(APIView):
+    def post(self, request):
+        serializer = AdminCreateSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({'message': 'Admin created successfully'}, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
