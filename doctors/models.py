@@ -2,6 +2,7 @@ import uuid
 from django.db import models
 from django.contrib.auth.hashers import make_password
 
+
 class Doctor(models.Model):
     # Fields for the Doctor model
     user_name = models.CharField(max_length=100, unique=True)
@@ -9,7 +10,7 @@ class Doctor(models.Model):
     contact_number = models.CharField(max_length=20)
     email = models.EmailField(unique=True)
     role = models.CharField(max_length=50)
-    DOB = models.DateField()
+    DOB = models.CharField(max_length=50)
     gender = models.CharField(max_length=10)
     address = models.TextField()
     start_year_of_practice = models.IntegerField()
@@ -21,14 +22,17 @@ class Doctor(models.Model):
     hospital = models.CharField(max_length=255)
 
     def save(self, *args, **kwargs):
-        # Hash the password before saving
-        if not self.id:
+        # Hash the password before saving if it is not already hashed
+        if not self.password.startswith('pbkdf2_'):
             self.password = make_password(self.password)
         super(Doctor, self).save(*args, **kwargs)
 
     @classmethod
     def create_doctor(cls, user_name, name, contact_number, email, role, DOB, gender, address, start_year_of_practice,
-                      specialization, study_history, password, hospital):
+                      availability_hours, specialization, study_history, password, hospital):
+        """
+        Class method to create a new doctor instance and save it to the database.
+        """
         hashed_password = make_password(password)
         doctor = cls(
             user_name=user_name,
@@ -40,6 +44,7 @@ class Doctor(models.Model):
             gender=gender,
             address=address,
             start_year_of_practice=start_year_of_practice,
+            availability_hours=availability_hours,
             specialization=specialization,
             study_history=study_history,
             password=hashed_password,
@@ -50,10 +55,16 @@ class Doctor(models.Model):
 
     @classmethod
     def get_all_doctors(cls):
+        """
+        Retrieve all doctor instances from the database.
+        """
         return list(cls.objects.all())
 
     @classmethod
     def get_doctor_by_username(cls, username):
+        """
+        Fetch a doctor instance based on the given username.
+        """
         try:
             return cls.objects.get(user_name=username)
         except cls.DoesNotExist:
@@ -61,6 +72,9 @@ class Doctor(models.Model):
 
     @classmethod
     def update_doctor(cls, username, **kwargs):
+        """
+        Update a doctor's information based on the provided keyword arguments.
+        """
         try:
             doctor = cls.objects.get(user_name=username)
             for key, value in kwargs.items():
