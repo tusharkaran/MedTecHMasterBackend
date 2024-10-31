@@ -1,7 +1,7 @@
-from django.urls import path 
-from . import views 
+from django.urls import path
+from .views import PatientRegistration, PatientLogin
 
-app_name = 'myapp' 
-urlpatterns = [ 
-    path('', views.getPatients, name='index')             
+urlpatterns = [
+    path('register', PatientRegistration.as_view(), name='patient-register'),
+    path('login', PatientLogin.as_view(), name='patient-login'),
 ]

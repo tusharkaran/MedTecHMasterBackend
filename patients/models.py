@@ -1,6 +1,7 @@
 import uuid
 from django.db import models
-from django.contrib.auth.hashers import make_password
+from django.contrib.auth.hashers import make_password, check_password
+
 
 class Patient(models.Model):
     # Fields for the Patient model
@@ -14,17 +15,19 @@ class Patient(models.Model):
     address = models.TextField()
     doctors = models.JSONField(default=list, blank=True)
     password = models.CharField(max_length=255)
-    room_id = models.UUIDField(default=uuid.uuid4, editable=False)
+    room_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
     def save(self, *args, **kwargs):
-        # Hash the password before saving
-        if not self.id:
+        # Hash the password before saving if it is not already hashed
+        if not self.password.startswith('pbkdf2_'):
             self.password = make_password(self.password)
         super(Patient, self).save(*args, **kwargs)
 
     @classmethod
-    def create_patient(cls, user_name, name, contact_number, email, role, DOB,
-                       gender, address, password):
+    def create_patient(cls, user_name, name, contact_number, email, role, DOB, gender, address, password):
+        """
+        Class method to create a new patient instance and save it to the database.
+        """
         hashed_password = make_password(password)
         patient = cls(
             user_name=user_name,
@@ -41,11 +44,10 @@ class Patient(models.Model):
         return patient
 
     @classmethod
-    def get_all_patients(cls):
-        return list(cls.objects.all())
-
-    @classmethod
     def get_patient_by_username(cls, username):
+        """
+        Fetch a patient instance based on the given username.
+        """
         try:
             return cls.objects.get(user_name=username)
         except cls.DoesNotExist:
@@ -53,6 +55,9 @@ class Patient(models.Model):
 
     @classmethod
     def update_patient(cls, username, **kwargs):
+        """
+        Update a patient's information based on the provided keyword arguments.
+        """
         try:
             patient = cls.objects.get(user_name=username)
             for key, value in kwargs.items():
@@ -68,7 +73,17 @@ class Patient(models.Model):
             return {'message': 'Failed to update patient', 'error': str(e)}
 
     @classmethod
+    def get_all_patients(cls):
+        """
+        Retrieve all patient instances from the database.
+        """
+        return list(cls.objects.all())
+
+    @classmethod
     def get_room_id_by_username(cls, username):
+        """
+        Fetch the room_id based on the given username.
+        """
         try:
             patient = cls.objects.get(user_name=username)
             return patient.room_id
