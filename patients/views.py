@@ -6,7 +6,7 @@ from django.utils.decorators import method_decorator
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth.hashers import check_password
 from .models import Patient, RecordedData
-from .serializer import PatientSerializer
+from .serializer import PatientSerializer, RecordedDataSerializer
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework.exceptions import APIException
@@ -182,6 +182,18 @@ class PatientAllResources(APIView):
         try:
             patients = Patient.objects.all()
             serializer = PatientSerializer(patients, many=True)
+            return Response({'data': serializer.data})
+        except ValueError as e:
+            raise APIException(detail=str(e), code=400)
+        except Exception as e:
+            raise APIException(detail=str(e), code=500)
+        
+
+class AllRecordedDataView(APIView):
+    def get(self, request, *args, **kwargs):
+        try:
+            records = RecordedData.objects.all()
+            serializer = RecordedDataSerializer(records, many=True)
             return Response({'data': serializer.data})
         except ValueError as e:
             raise APIException(detail=str(e), code=400)
