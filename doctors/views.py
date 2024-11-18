@@ -117,3 +117,65 @@ class DoctorAllResources(APIView):
             raise APIException(detail=str(e), code=400)
         except Exception as e:
             raise APIException(detail=str(e), code=500)
+        
+
+class DoctorResource(APIView):
+    # Uncomment the following line to enable authentication
+    # permission_classes = [IsAuthenticated]
+
+    def get(self, request, user_name):
+        """
+        Retrieve a doctor's details by username.
+        """
+        try:
+            doctor = Doctor.objects.get(user_name=user_name)
+            serializer = DoctorSerializer(doctor)
+            return Response({'data': serializer.data}, status=200)
+        except Doctor.DoesNotExist:
+            raise APIException(detail="Doctor not found")
+        except Exception as e:
+            raise APIException(detail=str(e))
+
+    def post(self, request):
+        """
+        Create a new doctor.
+        """
+        try:
+            serializer = DoctorSerializer(data=request.data)
+            if serializer.is_valid():
+                doctor = serializer.save()
+                return Response({'message': 'Doctor created successfully', 'data': serializer.data}, status=201)
+            else:
+                raise APIException(detail=serializer.errors)
+        except Exception as e:
+            raise APIException(detail=str(e))
+
+    def put(self, request, user_name):
+        """
+        Update a doctor's details by username.
+        """
+        try:
+            doctor = Doctor.objects.get(user_name=user_name)
+            serializer = DoctorSerializer(doctor, data=request.data, partial=True)  # Allows partial updates
+            if serializer.is_valid():
+                updated_doctor = serializer.save()
+                return Response({'message': 'Doctor updated successfully', 'data': serializer.data}, status=200)
+            else:
+                raise APIException(detail=serializer.errors)
+        except Doctor.DoesNotExist:
+            raise APIException(detail="Doctor not found")
+        except Exception as e:
+            raise APIException(detail=str(e))
+
+    def delete(self, request, user_name):
+        """
+        Delete a doctor by username.
+        """
+        try:
+            doctor = Doctor.objects.get(user_name=user_name)
+            doctor.delete()
+            return Response({'message': 'Doctor deleted successfully'}, status=200)
+        except Doctor.DoesNotExist:
+            raise APIException(detail="Doctor not found")
+        except Exception as e:
+            raise APIException(detail=str(e))
