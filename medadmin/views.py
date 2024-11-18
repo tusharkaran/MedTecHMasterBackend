@@ -8,6 +8,8 @@ from django.contrib.auth.hashers import check_password
 from django.shortcuts import get_object_or_404
 from .models import Admin
 from .serializer import AdminCreateSerializer
+from doctors.models import Doctor
+from patients.models import Patient
 
 # Create your views here.
 def getMedAdmin(request):
@@ -52,3 +54,67 @@ class AdminCreateView(APIView):
             serializer.save()
             return Response({'message': 'Admin created successfully'}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+
+class DoctorPatientRelationView(APIView):
+    def post(self, request):
+        """
+        Link a doctor and patient.
+        """
+        doctor_username = request.data.get('doctor_username')
+        patient_username = request.data.get('patient_username')
+
+        try:
+            doctor = Doctor.objects.get(user__username=doctor_username)
+            patient = Patient.objects.get(user__username=patient_username)
+            doctor.patients.add(patient)
+            doctor.save()
+            patient.doctors.add(doctor)
+            patient.save()
+            return Response(
+                {'message': 'Doctor and Patient are linked successfully'},
+                status=status.HTTP_200_OK,
+            )
+        except Doctor.DoesNotExist:
+            return Response(
+                {'error': 'Doctor not found'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        except Patient.DoesNotExist:
+            return Response(
+                {'error': 'Patient not found'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def delete(self, request):
+        """
+        Unlink a doctor and patient.
+        """
+        doctor_username = request.data.get('doctor_username')
+        patient_username = request.data.get('patient_username')
+
+        try:
+            doctor = Doctor.objects.get(user__username=doctor_username)
+            patient = Patient.objects.get(user__username=patient_username)
+            doctor.patients.remove(patient)
+            doctor.save()
+            patient.doctors.remove(doctor)
+            patient.save()
+            return Response(
+                {'message': 'Patient and Doctor are unlinked successfully'},
+                status=status.HTTP_200_OK,
+            )
+        except Doctor.DoesNotExist:
+            return Response(
+                {'error': 'Doctor not found'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        except Patient.DoesNotExist:
+            return Response(
+                {'error': 'Patient not found'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

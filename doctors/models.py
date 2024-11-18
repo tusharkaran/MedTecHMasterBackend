@@ -88,3 +88,4 @@ class Doctor(models.Model):
             return {'message': 'Doctor not found'}
         except Exception as e:
             return {'message': 'Failed to update doctor', 'error': str(e)}
+

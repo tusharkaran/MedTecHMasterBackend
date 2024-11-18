@@ -15,3 +15,5 @@ class AdminCreateSerializer(serializers.Serializer):
             password=hashed_password
         )
         return admin
+
+

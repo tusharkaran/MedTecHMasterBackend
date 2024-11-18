@@ -1,7 +1,8 @@
 from django.urls import path
-from .views import PatientRegistration, PatientLogin, PatientResource, RecordView, LatestRecordView
+from .views import PatientRegistration, PatientLogin, PatientResource, RecordView, LatestRecordView, PatientAllResources
 
 urlpatterns = [
+    path('', PatientAllResources.as_view(), name='patient-list'),
     path('register', PatientRegistration.as_view(), name='patient-register'),
     path('login', PatientLogin.as_view(), name='patient-login'),
     path('record/', RecordView.as_view(), name='create-record'),

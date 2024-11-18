@@ -9,6 +9,7 @@ from .models import Patient, RecordedData
 from .serializer import PatientSerializer
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+from rest_framework.exceptions import APIException
 
 class PatientRegistration(APIView):
     @method_decorator(csrf_exempt)
@@ -173,3 +174,16 @@ class LatestRecordView(APIView):
                 return Response({'message': "Record not found"}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             return Response({'message': f"Error: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+
+class PatientAllResources(APIView):
+
+    def get(self, request, *args, **kwargs):
+        try:
+            patients = Patient.objects.all()
+            serializer = PatientSerializer(patients, many=True)
+            return Response({'data': serializer.data})
+        except ValueError as e:
+            raise APIException(detail=str(e), code=400)
+        except Exception as e:
+            raise APIException(detail=str(e), code=500)

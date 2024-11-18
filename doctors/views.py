@@ -6,6 +6,8 @@ from django.utils.decorators import method_decorator
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth.hashers import check_password
 from .models import Doctor  # Import your Doctor model
+from rest_framework.exceptions import APIException
+from .serializers import DoctorSerializer
 
 class DoctorRegistration(APIView):
     @method_decorator(csrf_exempt)
@@ -103,3 +105,15 @@ class DoctorLogin(APIView):
                 {'message': f'Error during login: {str(e)}'}, 
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+
+class DoctorAllResources(APIView):
+    def get(self, request, *args, **kwargs):
+        try:
+            doctors = Doctor.objects.all()
+            serializer = DoctorSerializer(doctors, many=True)
+            return Response({'data': serializer.data})
+        except ValueError as e:
+            raise APIException(detail=str(e), code=400)
+        except Exception as e:
+            raise APIException(detail=str(e), code=500)
