@@ -65,11 +65,11 @@ class DoctorPatientRelationView(APIView):
         patient_username = request.data.get('patient_username')
 
         try:
-            doctor = Doctor.objects.get(user__username=doctor_username)
-            patient = Patient.objects.get(user__username=patient_username)
-            doctor.patients.add(patient)
+            doctor = Doctor.objects.get(user_name=doctor_username)
+            patient = Patient.objects.get(user_name=patient_username)
+            doctor.patients.append(patient.user_name)
             doctor.save()
-            patient.doctors.add(doctor)
+            patient.doctors.append(doctor.user_name)
             patient.save()
             return Response(
                 {'message': 'Doctor and Patient are linked successfully'},
@@ -96,8 +96,8 @@ class DoctorPatientRelationView(APIView):
         patient_username = request.data.get('patient_username')
 
         try:
-            doctor = Doctor.objects.get(user__username=doctor_username)
-            patient = Patient.objects.get(user__username=patient_username)
+            doctor = Doctor.objects.get(user_name=doctor_username)
+            patient = Patient.objects.get(user_name=patient_username)
             doctor.patients.remove(patient)
             doctor.save()
             patient.doctors.remove(doctor)
