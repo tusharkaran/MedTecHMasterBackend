@@ -1,7 +1,7 @@
 import uuid
 from django.db import models
 from django.contrib.auth.hashers import make_password
-
+from patients.models import Patient
 
 class Doctor(models.Model):
     # Fields for the Doctor model
@@ -17,7 +17,7 @@ class Doctor(models.Model):
     availability_hours = models.JSONField(default=list, blank=True)
     specialization = models.CharField(max_length=255)
     study_history = models.JSONField(default=list, blank=True)
-    patients = models.JSONField(default=list, blank=True)
+    patients = models.ManyToManyField(Patient, related_name='doctors')
     password = models.CharField(max_length=255)
     hospital = models.CharField(max_length=255)
 

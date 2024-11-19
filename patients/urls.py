@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import PatientRegistration, PatientLogin, PatientResource, RecordView, LatestRecordView, PatientAllResources, AllRecordedDataView
+from .views import PatientRegistration, PatientLogin, PatientResource, RecordView, LatestRecordView, PatientAllResources, AllRecordedDataView, SendSOS
 
 urlpatterns = [
     path('', PatientAllResources.as_view(), name='patient-list'),
@@ -11,4 +11,5 @@ urlpatterns = [
     path('latest-record/<str:username>/', LatestRecordView.as_view(), name='latest-record'),
     path('<str:username>', PatientResource.as_view()),
     path('all-record-data', AllRecordedDataView.as_view()),
+    path('sos/<str:username>/', SendSOS.as_view(), name='send_sos'),
 ]

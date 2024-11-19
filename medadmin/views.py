@@ -10,6 +10,7 @@ from .models import Admin
 from .serializer import AdminCreateSerializer
 from doctors.models import Doctor
 from patients.models import Patient
+from django.shortcuts import get_object_or_404
 
 # Create your views here.
 def getMedAdmin(request):
@@ -56,6 +57,7 @@ class AdminCreateView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
 
+
 class DoctorPatientRelationView(APIView):
     def post(self, request):
         """
@@ -72,21 +74,21 @@ class DoctorPatientRelationView(APIView):
             patient.doctors.append(doctor.user_name)
             patient.save()
             return Response(
-                {'message': 'Doctor and Patient are linked successfully'},
-                status=status.HTTP_200_OK,
+                {'error': 'Doctor and patient usernames are required.'},
+                status=status.HTTP_400_BAD_REQUEST,
             )
-        except Doctor.DoesNotExist:
-            return Response(
-                {'error': 'Doctor not found'},
-                status=status.HTTP_404_NOT_FOUND,
-            )
-        except Patient.DoesNotExist:
-            return Response(
-                {'error': 'Patient not found'},
-                status=status.HTTP_404_NOT_FOUND,
-            )
-        except Exception as e:
-            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        doctor = get_object_or_404(Doctor, user_name=doctor_username)
+        patient = get_object_or_404(Patient, user_name=patient_username)
+
+        # Assuming ManyToManyField
+        doctor.patients.add(patient)
+        patient.doctors.add(doctor)
+
+        return Response(
+            {'message': 'Doctor and Patient are linked successfully'},
+            status=status.HTTP_200_OK,
+        )
 
     def delete(self, request):
         """
@@ -103,18 +105,18 @@ class DoctorPatientRelationView(APIView):
             patient.doctors.remove(doctor)
             patient.save()
             return Response(
-                {'message': 'Patient and Doctor are unlinked successfully'},
-                status=status.HTTP_200_OK,
+                {'error': 'Doctor and patient usernames are required.'},
+                status=status.HTTP_400_BAD_REQUEST,
             )
-        except Doctor.DoesNotExist:
-            return Response(
-                {'error': 'Doctor not found'},
-                status=status.HTTP_404_NOT_FOUND,
-            )
-        except Patient.DoesNotExist:
-            return Response(
-                {'error': 'Patient not found'},
-                status=status.HTTP_404_NOT_FOUND,
-            )
-        except Exception as e:
-            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        doctor = get_object_or_404(Doctor, user_name=doctor_username)
+        patient = get_object_or_404(Patient, user_name=patient_username)
+
+        # Assuming ManyToManyField
+        doctor.patients.remove(patient)
+        patient.doctors.remove(doctor)
+
+        return Response(
+            {'message': 'Patient and Doctor are unlinked successfully'},
+            status=status.HTTP_200_OK,
+        )

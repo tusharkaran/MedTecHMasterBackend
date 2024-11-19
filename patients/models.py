@@ -13,7 +13,6 @@ class Patient(models.Model):
     DOB = models.CharField(max_length=50)
     gender = models.CharField(max_length=10)
     address = models.TextField()
-    doctors = models.JSONField(default=list, blank=True)
     password = models.CharField(max_length=255)
     room_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 

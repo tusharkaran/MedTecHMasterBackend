@@ -10,6 +10,50 @@ from .serializer import PatientSerializer, RecordedDataSerializer
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework.exceptions import APIException
+import os
+from twilio.rest import Client
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
+# Twilio credentials
+account_sid = os.getenv('TWILIO_ACCOUNT_SID')
+auth_token = os.getenv('TWILIO_AUTH_TOKEN')
+twilio_number = os.getenv('TWILIO_PHONE_NUMBER')
+hospital_number = os.getenv('HOSPITAL_PHONE_NUMBER')
+
+# Initialize the Twilio client
+client = Client(account_sid, auth_token)
+
+class SendSOS(APIView):
+    """
+    API endpoint to send an SOS message.
+    """
+    def post(self, request, username):
+        # Retrieve the patient by username
+        try:
+            patient = get_object_or_404(Patient, user_name=username)
+        except Patient.DoesNotExist:
+            return Response({'message': 'Unable to find the Patient'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Construct the SOS message
+        message = (
+            f"Send Help to {patient.name}. Contact number: +{patient.contact_number}. "
+            f"Address: {patient.address}."
+        )
+
+        # Send the SOS message using Twilio
+        try:
+            response = client.messages.create(
+                body=message,
+                from_=twilio_number,
+                to=hospital_number
+            )
+            return Response({'message': 'SOS message sent successfully'}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'message': f'Failed to send SOS message: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 class PatientRegistration(APIView):
     @method_decorator(csrf_exempt)
