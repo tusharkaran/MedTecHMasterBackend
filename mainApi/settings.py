@@ -41,7 +41,9 @@ INSTALLED_APPS = [
     "doctors",
     "medadmin",
     "rest_framework",
-    "corsheaders"
+    "corsheaders",
+        "alert",
+        "appointment"
 ]
 
 REST_FRAMEWORK = {
