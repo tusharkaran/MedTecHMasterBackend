@@ -18,7 +18,7 @@ class Doctor(models.Model):
     availability_hours = models.JSONField(default=list, blank=True)
     specialization = models.CharField(max_length=255)
     # study_history = models.JSONField(default=list, blank=True)
-    patients = models.ManyToManyField(Patient, related_name='doctors')
+    patients = models.ManyToManyField(Patient, related_name='treated_doctors')
     password = models.CharField(max_length=255)
     hospital = models.CharField(max_length=255)
 

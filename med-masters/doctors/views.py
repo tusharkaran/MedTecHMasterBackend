@@ -9,6 +9,7 @@ from .models import Doctor, Appointment , TimeSlot  # Import your Doctor model
 from rest_framework.exceptions import APIException
 from .serializers import DoctorSerializer , TimeSlotSerializer
 from django.views import View
+from django.db.models import Q
 
 from django.http import JsonResponse
 from datetime import datetime, timedelta
@@ -132,7 +133,7 @@ class DoctorResource(APIView):
         Retrieve a doctor's details by username.
         """
         try:
-            doctor = Doctor.objects.get(user_name=user_name)
+            doctor = Doctor.objects.filter(user_name=user_name).first() or Doctor.objects.filter(id=user_name).first()
             serializer = DoctorSerializer(doctor)
             return Response({'data': serializer.data}, status=200)
         except Doctor.DoesNotExist:

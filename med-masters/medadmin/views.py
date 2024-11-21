@@ -71,6 +71,7 @@ class DoctorPatientRelationView(APIView):
             
             # Add the patient to the doctor's `patients` ManyToManyField
             doctor.patients.add(patient)
+            patient.doctors.add(doctor)
             
             # Save is not required for ManyToManyField
             return Response(

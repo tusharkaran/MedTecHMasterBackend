@@ -16,6 +16,11 @@ class Patient(models.Model):
     address = models.TextField()
     password = models.CharField(max_length=255)
     room_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    doctors = models.ManyToManyField('doctors.Doctor', related_name='assigned_patients')
+
+    # Method to get all doctors assigned to this patient
+    def get_doctors(self):
+        return self.doctors.all()
 
     def save(self, *args, **kwargs):
         # Hash the password before saving if it is not already hashed

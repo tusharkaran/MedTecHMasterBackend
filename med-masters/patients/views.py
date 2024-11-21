@@ -182,6 +182,7 @@ class RecordView(APIView):
         if username:
             patient = Patient.get_patient_by_username(username)
             if not patient:
+                print("No such username: ", username)
                 return Response({'message': 'No records found for this username'}, status=404)
             
         try:
@@ -256,7 +257,7 @@ class RecordView(APIView):
         except Exception as e:
             return Response({'error': str(e)}, status=500)
 
-@method_decorator(csrf_exempt, name='dispatch')
+# @method_decorator(csrf_exempt, name='dispatch')
 class LatestRecordView(APIView):
     def get(self, request, username):
         try:
