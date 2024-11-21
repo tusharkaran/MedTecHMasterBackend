@@ -5,9 +5,14 @@ from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth.hashers import check_password
-from .models import Doctor  # Import your Doctor model
+from .models import Doctor, Appointment , TimeSlot  # Import your Doctor model
 from rest_framework.exceptions import APIException
-from .serializers import DoctorSerializer
+from .serializers import DoctorSerializer , TimeSlotSerializer
+from django.views import View
+
+from django.http import JsonResponse
+from datetime import datetime, timedelta
+from django.utils.timezone import now
 
 class DoctorRegistration(APIView):
     @method_decorator(csrf_exempt)
@@ -178,3 +183,207 @@ class DoctorResource(APIView):
             raise APIException(detail="Doctor not found")
         except Exception as e:
             raise APIException(detail=str(e))
+        
+
+
+class TimeSlotsView(APIView):
+ 
+    @staticmethod
+    def generate_slot_start_times(start_time, end_time, interval_minutes=15):
+        """
+        Generate time slots between start_time and end_time at given intervals.
+        """
+        try:
+            start_datetime = datetime.strptime(start_time, '%H:%M')
+            end_datetime = datetime.strptime(end_time, '%H:%M')
+        except ValueError:
+            raise ValueError("Invalid time format. Expected 'HH:MM'.")
+ 
+        interval = timedelta(minutes=interval_minutes)
+        current_datetime = start_datetime
+        slots = []
+ 
+        while current_datetime < end_datetime:
+            slots.append(current_datetime.strftime('%H:%M'))
+            current_datetime += interval
+ 
+        return slots
+ 
+    def post(self, request, username):
+        """
+        Create new time slots for a given doctor.
+        """
+        data = request.data
+        if not isinstance(data, list):
+            return Response({'message': 'Invalid data format. Expected a list.'}, status=status.HTTP_400_BAD_REQUEST)
+ 
+        try:
+            doctor_instance = Doctor.objects.get(user_name=username)  # Ensure username field matches the model
+            created_slots = []
+ 
+            for item in data:
+                day_name = item.get('day_name')
+                start_time = item.get('start_time')
+                end_time = item.get('end_time')
+ 
+                if not day_name or not start_time or not end_time:
+                    return Response({'message': 'Missing required fields'}, status=status.HTTP_400_BAD_REQUEST)
+ 
+                # Generate time slots
+                try:
+                    slots = self.generate_slot_start_times(start_time, end_time)
+                except ValueError as e:
+                    return Response({'message': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+ 
+                # Prepare TimeSlot objects for bulk creation
+                created_slots.extend([
+                    TimeSlot(
+                        start_time=slot_start_time,
+                        end_time=None,
+                        is_booked=False,
+                        day_name=day_name,
+                        parent_start_time=start_time,
+                        parent_end_time=end_time,
+                        doctor=doctor_instance
+                    )
+                    for slot_start_time in slots
+                ])
+ 
+            # Bulk create time slots
+            TimeSlot.objects.bulk_create(created_slots)
+            serializer = TimeSlotSerializer(created_slots, many=True)
+ 
+            return Response({'message': 'Time slots created successfully', 'data': serializer.data}, status=status.HTTP_201_CREATED)
+        except Doctor.DoesNotExist:
+            return Response({'message': 'Doctor not found'}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({'message': f'Error creating time slots: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+ 
+    def get(self, request, username):
+        """
+        Retrieve time slots for a doctor, optionally filtered by day_name.
+        """
+        day_name = request.query_params.get("day_name")
+        try:
+            query = {'doctor__user_name': username}
+            if day_name:
+                query['day_name'] = day_name
+ 
+            slots = TimeSlot.objects.filter(**query)
+            if slots.exists():
+                serializer = TimeSlotSerializer(slots, many=True)
+                return Response({'data': serializer.data}, status=status.HTTP_200_OK)
+            else:
+                return Response({'message': 'Time slots not found for this doctor'}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({'message': f'Internal Server Error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+ 
+    def put(self, request, username):
+        """
+        Update (replace) existing time slots for a doctor.
+        Deletes existing slots and creates new ones based on the provided data.
+        """
+        data = request.data
+        if not isinstance(data, list):
+            return Response({'message': 'Invalid data format. Expected a list.'}, status=status.HTTP_400_BAD_REQUEST)
+ 
+        try:
+            doctor_instance = Doctor.objects.get(user_name=username)
+            TimeSlot.objects.filter(doctor=doctor_instance).delete()
+ 
+            created_slots = []
+            for item in data:
+                day_name = item.get('day_name')
+                start_time = item.get('start_time')
+                end_time = item.get('end_time')
+ 
+                if not day_name or not start_time or not end_time:
+                    return Response({'message': 'Missing required fields'}, status=status.HTTP_400_BAD_REQUEST)
+ 
+                try:
+                    slots = self.generate_slot_start_times(start_time, end_time)
+                except ValueError as e:
+                    return Response({'message': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+ 
+                created_slots.extend([
+                    TimeSlot(
+                        start_time=slot_start_time,
+                        end_time=None,
+                        is_booked=False,
+                        day_name=day_name,
+                        parent_start_time=start_time,
+                        parent_end_time=end_time,
+                        doctor=doctor_instance
+                    )
+                    for slot_start_time in slots
+                ])
+ 
+            TimeSlot.objects.bulk_create(created_slots)
+            serializer = TimeSlotSerializer(created_slots, many=True)
+            return Response({'message': 'Time slots updated successfully', 'data': serializer.data}, status=status.HTTP_200_OK)
+        except Doctor.DoesNotExist:
+            return Response({'message': 'Doctor not found'}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({'message': f'Error updating time slots: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+ 
+    def delete(self, request, username):
+        """
+        Delete time slots for a doctor. If 'is_all' is true, delete all time slots.
+        """
+        is_all = request.query_params.get("is_all", "false").lower() == "true"
+        try:
+            if is_all:
+                TimeSlot.objects.all().delete()
+                return Response({'message': 'Deleted all records'}, status=status.HTTP_200_OK)
+            else:
+                slots = TimeSlot.objects.filter(doctor_username=username)
+                if slots.exists():
+                    slots.delete()
+                    return Response({'message': 'Deleted all records for username'}, status=status.HTTP_200_OK)
+                else:
+                    return Response({'message': 'No records found for username'}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({'message': f'Error deleting time slots: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+ 
+ 
+class GetAvailTimeSlot(View):
+    def get(self, request, doctor_username):
+        day_name = request.GET.get("day_name")
+        try:
+            if day_name:
+                slots = TimeSlot.objects.filter(doctor__user_name=doctor_username, day_name=day_name).values()
+            else:
+                slots = TimeSlot.objects.filter(doctor__user_name=doctor_username).values()
+ 
+            booked_appointments = self.query_appointments(doctor_username)
+ 
+            if booked_appointments:
+                for slot in slots:
+                    for appointment in booked_appointments:
+                        if (slot['day_name'] == appointment['day'] and
+                                slot['start_time'] == appointment['time'] and
+                                slot['doctor_id'] == appointment['doctor_username']):
+                            slot['is_booked'] = True
+                            break
+ 
+            return JsonResponse(list(slots), safe=False, status=200)
+ 
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+ 
+    @staticmethod
+    def query_appointments(doctor_username):
+        try:
+            # Get the current date
+            current_date = now().date()
+ 
+            appointments = Appointment.objects.filter(
+                doctor_username=doctor_username,
+                date__gt=current_date
+            ).values()
+ 
+            return list(appointments)
+ 
+        except Exception as e:
+            print(f"An error occurred while querying appointments: {str(e)}")
+            return []

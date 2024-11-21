@@ -90,3 +90,59 @@ class Doctor(models.Model):
         except Exception as e:
             return {'message': 'Failed to update doctor', 'error': str(e)}
 
+
+
+class TimeSlot(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    start_time = models.TimeField(null=True, blank=True)
+    end_time = models.TimeField(null=True, blank=True)
+    is_booked = models.BooleanField(default=False)
+    day_name = models.CharField(max_length=50, null=True, blank=True)
+    parent_start_time = models.TimeField(null=True, blank=True)
+    parent_end_time = models.TimeField(null=True, blank=True)
+    doctor = models.ForeignKey(Doctor, on_delete=models.CASCADE, related_name="time_slots")  # Use ForeignKey here
+ 
+    @classmethod
+    def generate_slot_start_times(cls, start_time, end_time):
+        from datetime import datetime, timedelta
+ 
+        start_datetime = datetime.strptime(start_time, '%H:%M')
+        end_datetime = datetime.strptime(end_time, '%H:%M')
+        interval = timedelta(minutes=15)
+ 
+        current_datetime = start_datetime
+        while current_datetime + interval <= end_datetime:
+            yield current_datetime.strftime('%H:%M')
+ 
+    @classmethod
+    def create_time_slots(cls, doctor, start_time, end_time, day_name):
+        slots = cls.generate_slot_start_times(start_time, end_time)
+        created_slots = []
+        for slot_start_time in slots:
+            timeslot = cls.objects.create(
+                start_time=slot_start_time,
+                end_time=None,
+                is_booked=False,
+                day_name=day_name,
+                parent_start_time=start_time,
+                parent_end_time=end_time,
+                doctor=doctor,  # Link to doctor instance
+            )
+            created_slots.append(timeslot)
+        return created_slots
+ 
+class Appointment(models.Model):
+    doctor_username = models.CharField(max_length=255)
+    date = models.DateField()
+    time = models.TimeField()
+    day = models.CharField(max_length=50)  # Optional if `date` suffices
+ 
+    @staticmethod
+    def deserialize(item):
+        # Example deserialization logic if needed
+        return {
+            'doctor_username': item['doctor_username'],
+            'date': item['date'],
+            'time': item['time'],
+            'day': item['day']
+        }
