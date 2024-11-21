@@ -11,3 +11,4 @@ class RecordedDataSerializer(serializers.ModelSerializer):
     class Meta:
         model = RecordedData
         fields = '__all__'
+
