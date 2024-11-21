@@ -1,3 +1,4 @@
+from uuid import uuid4
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -173,55 +174,104 @@ class PatientResource(APIView):
         patient.delete()
         return Response({'message': 'Patient deleted successfully'}, status=status.HTTP_204_NO_CONTENT)
     
-
-
-
+@method_decorator(csrf_exempt, name='dispatch')
 class RecordView(APIView):
-    def post(self, request):
-        data = request.data
+    def post(self, request, **kwargs):  # Accept additional keyword arguments
+        username = kwargs.get('username')  # Retrieve username from kwargs
+
+        if username:
+            patient = Patient.get_patient_by_username(username)
+            if not patient:
+                return Response({'message': 'No records found for this username'}, status=404)
+            
         try:
+            data = request.data
+
+            required_fields = ['blood_pressure', 'heart_rate', 'o2', 'temperature']
+            for field in required_fields:
+                if field not in data:
+                    return Response(
+                        {'error': f'Missing required field: {field}'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+
+            record_id = str(uuid4())
+
             record = RecordedData.create_record(
-                record_id=data['record_id'],
-                patient_username=data['patient_username'],
+                record_id=record_id,
+                patient_username=username,
                 timestamp=timezone.now(),
                 blood_pressure=data['blood_pressure'],
                 heart_rate=data['heart_rate'],
                 o2=data['o2'],
                 temperature=data['temperature']
             )
-            return Response({'message': 'Record created successfully', 'data': record.id}, status=status.HTTP_201_CREATED)
+
+            return Response(
+                {'message': 'Record created successfully', 'record_id': record.record_id},
+                status=status.HTTP_201_CREATED
+            )
+        except ValueError as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
         except Exception as e:
-            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
-    def get(self, request, record_id=None, patient_username=None):
-        if record_id:
-            record = RecordedData.get_record_by_id(record_id)
-            if record:
-                return Response({'data': record}, status=status.HTTP_200_OK)
-            return Response({'error': 'Record not found'}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {'error': f"Failed to create record: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
         
-        elif patient_username:
-            records = RecordedData.get_records_by_patient_username(patient_username)
-            return Response({'data': list(records)}, status=status.HTTP_200_OK)
-        
-        records = RecordedData.get_all_records()
-        return Response({'data': list(records)}, status=status.HTTP_200_OK)
+    def get(self, request, *args, **kwargs):
+        print("API called")
+        record_id = kwargs.get('record_id', None)
+        username = kwargs.get('username', None)
 
+        print("Request Parameter: ", request.query_params.get('username', None))
 
+        try:
+            # Fetch by record_id if provided
+            if record_id:
+                record = RecordedData.get_record_by_id(record_id)
+                if not record:
+                    return Response({'message': 'Record not found'}, status=404)
+
+                serializer = RecordedDataSerializer(record)
+                return Response({'data': serializer.data}, status=200)
+
+            # Fetch by username if provided
+            if username:
+                records = RecordedData.get_records_by_patient_username(username)
+                if not records.exists():
+                    return Response({'message': 'No records found for this username'}, status=404)
+
+                serializer = RecordedDataSerializer(records, many=True)
+                return Response({'data': serializer.data}, status=200)
+
+            # If neither record_id nor username is provided
+            return Response(
+                {'error': 'Please provide either record_id or username as a query parameter'},
+                status=400
+            )
+        except Exception as e:
+            return Response({'error': str(e)}, status=500)
+
+@method_decorator(csrf_exempt, name='dispatch')
 class LatestRecordView(APIView):
     def get(self, request, username):
         try:
-            record = RecordedData.get_latest_record(username)  # Fetch latest record by username
-            if record:
-                return Response({'data': record}, status=status.HTTP_200_OK)
-            else:
-                return Response({'message': "Record not found"}, status=status.HTTP_404_NOT_FOUND)
+            # Fetch the latest record for the given username
+            record = RecordedData.get_latest_record(username)
+            if not record:
+                return Response({'message': 'No records found for this patient'}, status=404)
+
+            # Serialize the record
+            serializer = RecordedDataSerializer(record)
+            return Response({'data': serializer.data}, status=200)
         except Exception as e:
-            return Response({'message': f"Error: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({'error': str(e)}, status=500)
         
-
 class PatientAllResources(APIView):
-
     def get(self, request, *args, **kwargs):
         try:
             patients = Patient.objects.all()
@@ -232,14 +282,21 @@ class PatientAllResources(APIView):
         except Exception as e:
             raise APIException(detail=str(e), code=500)
         
-
+@method_decorator(csrf_exempt, name='dispatch')
 class AllRecordedDataView(APIView):
     def get(self, request, *args, **kwargs):
         try:
+            # Fetch all records from the database
             records = RecordedData.objects.all()
+
+            # Serialize the queryset
             serializer = RecordedDataSerializer(records, many=True)
-            return Response({'data': serializer.data})
+
+            # Return the serialized data
+            return Response({'data': serializer.data}, status=200)
         except ValueError as e:
+            # Handle value errors
             raise APIException(detail=str(e), code=400)
         except Exception as e:
+            # Handle unexpected exceptions
             raise APIException(detail=str(e), code=500)
