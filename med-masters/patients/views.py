@@ -147,7 +147,7 @@ class PatientLogin(APIView):
 
 class PatientResource(APIView):
     def get(self, request, username):
-        patient = Patient.get_patient_by_username(username)
+        patient = Patient.get_patient_by_username(username) or Patient.get_patient_by_id(username)
         if patient:
             serializer = PatientSerializer(patient)
             return Response({'data': serializer.data}, status=status.HTTP_200_OK)

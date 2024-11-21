@@ -52,6 +52,16 @@ class Patient(models.Model):
             return cls.objects.get(user_name=username)
         except cls.DoesNotExist:
             return None
+    
+    @classmethod
+    def get_patient_by_id(cls, id):
+        """
+        Fetch a patient instance based on the given username.
+        """
+        try:
+            return cls.objects.get(id=id)
+        except cls.DoesNotExist:
+            return None
 
     @classmethod
     def update_patient(cls, username, **kwargs):

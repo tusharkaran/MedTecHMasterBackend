@@ -65,12 +65,14 @@ class DoctorPatientRelationView(APIView):
         patient_username = request.data.get('patient_username')
  
         try:
+            # Fetch the doctor and patient objects
             doctor = Doctor.objects.get(user_name=doctor_username)
             patient = Patient.objects.get(user_name=patient_username)
-            doctor.patients.append(patient.user_name)
-            doctor.save()
-            patient.doctors.append(doctor.user_name)
-            patient.save()
+            
+            # Add the patient to the doctor's `patients` ManyToManyField
+            doctor.patients.add(patient)
+            
+            # Save is not required for ManyToManyField
             return Response(
                 {'message': 'Doctor and Patient are linked successfully'},
                 status=status.HTTP_200_OK,
